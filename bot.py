@@ -2,7 +2,7 @@ import os
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = "8342491323:AAFgmXGyHjNI086EucC1K5WDCKUHIMiuPG0"
 
 goals = [
     ["برنامه‌نویسی", "کنکور"],
