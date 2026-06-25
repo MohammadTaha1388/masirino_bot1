@@ -33,21 +33,6 @@ def add_user(user_id, goal):
     conn.commit()
 
 
-def add_xp(user_id, amount):
-    user = get_user(user_id)
-    if not user:
-        return
-
-    xp = user[3] + amount
-    level = xp // 100 + 1
-
-    cursor.execute("""
-        UPDATE users SET xp=?, level=? WHERE user_id=?
-    """, (xp, level, user_id))
-
-    conn.commit()
-
-
 def update_streak(user_id, success=True):
     user = get_user(user_id)
     if not user:
@@ -66,7 +51,20 @@ def update_streak(user_id, success=True):
     cursor.execute("""
         UPDATE users SET streak=?, last_active=? WHERE user_id=?
     """, (streak, today, user_id))
+    conn.commit()
 
+
+def add_xp(user_id, amount):
+    user = get_user(user_id)
+    if not user:
+        return
+
+    xp = user[3] + amount
+    level = xp // 100 + 1
+
+    cursor.execute("""
+        UPDATE users SET xp=?, level=? WHERE user_id=?
+    """, (xp, level, user_id))
     conn.commit()
 
 
