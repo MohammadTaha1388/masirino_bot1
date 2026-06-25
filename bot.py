@@ -1,8 +1,9 @@
 import random
+
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
-from db import add_user, get_user, update_streak, get_stats
+from db import add_user, get_user, update_streak, add_xp, get_stats
 from plans import PLANS
 import config
 
@@ -22,18 +23,30 @@ goals_keyboard = ReplyKeyboardMarkup(
 action_keyboard = ReplyKeyboardMarkup(
     [
         ["🔥 انجام شد", "❌ انجام نشد"],
-        ["📅 برنامه امروز", "📊 آمار"]
+        ["📅 برنامه امروز", "📊 آمار"],
+        ["👤 پروفایل"]
     ],
     resize_keyboard=True
 )
 
 
+def make_plan(goal):
+    p = PLANS[goal]
+    return f"""📌 برنامه امروز:
+
+1️⃣ کار اصلی:
+{p['main']}
+
+2️⃣ کار مکمل:
+{p['support']}
+
+3️⃣ چالش:
+{p['challenge']}
+"""
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(config.WELCOME_TEXT, reply_markup=goals_keyboard)
-
-
-def get_random_plan(goal):
-    return random.choice(PLANS[goal])
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -44,39 +57,60 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in PLANS:
         add_user(user_id, text)
 
-        plan = get_random_plan(text)
+        plan = make_plan(text)
         user_last_plan[user_id] = plan
 
-        await update.message.reply_text(
-            f"🎯 هدف: {text}\n\n📌 برنامه امروز:\n{plan}",
-            reply_markup=action_keyboard
-        )
+        await update.message.reply_text(plan, reply_markup=action_keyboard)
         return
 
     # انجام شد
     if text == "🔥 انجام شد":
         update_streak(user_id, True)
+        add_xp(user_id, 20)
+
         user = get_user(user_id)
-        await update.message.reply_text(f"🔥 عالی! استریک تو: {user[2]} روز")
+
+        await update.message.reply_text(
+            f"🔥 آفرین!\n\n🔥 استریک: {user[2]} روز\n⭐ XP: {user[3]}\n🏆 Level: {user[4]}"
+        )
         return
 
     # انجام نشد
     if text == "❌ انجام نشد":
         update_streak(user_id, False)
-        await update.message.reply_text(config.FAIL_TEXT)
+        await update.message.reply_text("⚠️ استریک ریست شد")
         return
 
     # برنامه امروز
     if text == "📅 برنامه امروز":
-        plan = user_last_plan.get(user_id, "ابتدا یک هدف انتخاب کن")
-        await update.message.reply_text(f"📌 برنامه امروز:\n{plan}")
+        plan = user_last_plan.get(user_id, "اول هدف رو انتخاب کن")
+        await update.message.reply_text(plan)
         return
 
     # آمار
     if text == "📊 آمار":
         total, avg = get_stats()
         await update.message.reply_text(
-            f"📊 آمار مسیرنو:\n\n👥 کاربران: {total}\n🔥 میانگین استریک: {avg}"
+            f"📊 آمار:\n👥 کاربران: {total}\n🔥 میانگین استریک: {avg}"
+        )
+        return
+
+    # پروفایل
+    if text == "👤 پروفایل":
+        user = get_user(user_id)
+
+        if not user:
+            await update.message.reply_text("اول هدف انتخاب کن")
+            return
+
+        await update.message.reply_text(
+            f"""👤 پروفایل:
+
+🎯 هدف: {user[1]}
+🔥 استریک: {user[2]}
+⭐ XP: {user[3]}
+🏆 Level: {user[4]}
+"""
         )
         return
 
@@ -89,7 +123,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("MasirNo v1.2 running...")
+    print("MasirNo v1.4 running...")
     app.run_polling()
 
 
