@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     goal TEXT,
     streak INTEGER DEFAULT 0,
+    xp INTEGER DEFAULT 0,
+    level INTEGER DEFAULT 1,
     last_active TEXT
 )
 """)
@@ -23,10 +25,26 @@ def get_user(user_id):
 
 def add_user(user_id, goal):
     today = str(date.today())
-    cursor.execute(
-        "INSERT OR REPLACE INTO users (user_id, goal, streak, last_active) VALUES (?, ?, 0, ?)",
-        (user_id, goal, today)
-    )
+    cursor.execute("""
+        INSERT OR REPLACE INTO users
+        (user_id, goal, streak, xp, level, last_active)
+        VALUES (?, ?, 0, 0, 1, ?)
+    """, (user_id, goal, today))
+    conn.commit()
+
+
+def add_xp(user_id, amount):
+    user = get_user(user_id)
+    if not user:
+        return
+
+    xp = user[3] + amount
+    level = xp // 100 + 1
+
+    cursor.execute("""
+        UPDATE users SET xp=?, level=? WHERE user_id=?
+    """, (xp, level, user_id))
+
     conn.commit()
 
 
@@ -37,7 +55,7 @@ def update_streak(user_id, success=True):
 
     today = str(date.today())
     streak = user[2]
-    last = user[3]
+    last = user[5]
 
     if success:
         if last != today:
@@ -45,10 +63,10 @@ def update_streak(user_id, success=True):
     else:
         streak = 0
 
-    cursor.execute(
-        "UPDATE users SET streak=?, last_active=? WHERE user_id=?",
-        (streak, today, user_id)
-    )
+    cursor.execute("""
+        UPDATE users SET streak=?, last_active=? WHERE user_id=?
+    """, (streak, today, user_id))
+
     conn.commit()
 
 
