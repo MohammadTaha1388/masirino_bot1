@@ -59,4 +59,4 @@ def get_stats():
     cursor.execute("SELECT AVG(streak) FROM users")
     avg = cursor.fetchone()[0] or 0
 
-    return total, round(avg, 1)'
+    return total, round(avg, 1)
