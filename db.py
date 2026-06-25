@@ -18,19 +18,18 @@ CREATE TABLE IF NOT EXISTS users (
 conn.commit()
 
 
-def get_user(user_id):
-    cursor.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
-    return cursor.fetchone()
-
-
 def add_user(user_id, goal):
     today = str(date.today())
     cursor.execute("""
         INSERT OR REPLACE INTO users
-        (user_id, goal, streak, xp, level, last_active)
         VALUES (?, ?, 0, 0, 1, ?)
     """, (user_id, goal, today))
     conn.commit()
+
+
+def get_user(user_id):
+    cursor.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
+    return cursor.fetchone()
 
 
 def update_streak(user_id, success=True):
@@ -48,9 +47,8 @@ def update_streak(user_id, success=True):
     else:
         streak = 0
 
-    cursor.execute("""
-        UPDATE users SET streak=?, last_active=? WHERE user_id=?
-    """, (streak, today, user_id))
+    cursor.execute("UPDATE users SET streak=?, last_active=? WHERE user_id=?",
+                   (streak, today, user_id))
     conn.commit()
 
 
@@ -62,9 +60,8 @@ def add_xp(user_id, amount):
     xp = user[3] + amount
     level = xp // 100 + 1
 
-    cursor.execute("""
-        UPDATE users SET xp=?, level=? WHERE user_id=?
-    """, (xp, level, user_id))
+    cursor.execute("UPDATE users SET xp=?, level=? WHERE user_id=?",
+                   (xp, level, user_id))
     conn.commit()
 
 
