@@ -1,143 +1,65 @@
-import random
-
-from telegram import ReplyKeyboardMarkup, Update
+from telegram import ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
-from db import add_user, get_user, update_streak, add_xp, get_stats
-from plans import PLANS
+from ai import ask_ai
 import config
 
-TOKEN = "8342491323:AAFgmXGyHjNI086EucC1K5WDCKUHIMiuPG0"
+TOKEN = config.BOT_TOKEN
 
-user_last_plan = {}
-
-# 🎯 دکمه هدف‌ها (کاملاً دقیق)
-goals_keyboard = ReplyKeyboardMarkup(
+keyboard = ReplyKeyboardMarkup(
     [
-        ["برنامه‌نویسی", "کنکور"],
-        ["زبان انگلیسی", "تناسب اندام"],
-        ["کسب درآمد"]
+        ["💬 چت با AI"],
+        ["📅 برنامه امروز", "📊 آمار"]
     ],
     resize_keyboard=True
 )
 
-# 🔥 دکمه عملیات
-action_keyboard = ReplyKeyboardMarkup(
-    [
-        ["🔥 انجام شد", "❌ انجام نشد"],
-        ["📅 برنامه امروز", "📊 آمار"],
-        ["👤 پروفایل"]
-    ],
-    resize_keyboard=True
-)
-
-
-def make_plan(goal):
-    p = PLANS[goal]
-    return f"""
-📌 برنامه امروز:
-
-1️⃣ کار اصلی:
-{p['main']}
-
-2️⃣ کار مکمل:
-{p['support']}
-
-3️⃣ چالش:
-{p['challenge']}
-"""
+user_mode = {}  # حالت چت
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        config.WELCOME_TEXT,
-        reply_markup=goals_keyboard
+        "👋 به مسیرنو AI خوش آمدی\n\n💬 برای صحبت با AI روی دکمه بزن",
+        reply_markup=keyboard
     )
 
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    text = update.message.text.strip()  # ⭐ خیلی مهم
+    text = update.message.text
 
-    # 🎯 انتخاب هدف
-    if text in PLANS:
-        add_user(user_id, text)
-
-        user = get_user(user_id)
-
-        plan = make_plan(text)
-        user_last_plan[user_id] = plan
-
-        await update.message.reply_text(plan, reply_markup=action_keyboard)
+    # 🤖 ورود به حالت چت
+    if text == "💬 چت با AI":
+        user_mode[user_id] = "chat"
+        await update.message.reply_text("💬 حالا سوالت رو بپرس...")
         return
 
-    # 🔥 انجام شد
-    if text == "🔥 انجام شد":
-        update_streak(user_id, True)
-        add_xp(user_id, 20)
-
-        user = get_user(user_id)
-
-        await update.message.reply_text(
-            f"""🔥 عالی!
-
-🔥 استریک: {user[2]}
-⭐ XP: {user[3]}
-🏆 Level: {user[4]}"""
-        )
+    # 💬 اگر در حالت چت هست
+    if user_mode.get(user_id) == "chat":
+        response = ask_ai(text)
+        await update.message.reply_text(response)
         return
 
-    # ❌ انجام نشد
-    if text == "❌ انجام نشد":
-        update_streak(user_id, False)
-        await update.message.reply_text("⚠️ استریک ریست شد")
-        return
-
-    # 📅 برنامه امروز
+    # 📅 برنامه ساده
     if text == "📅 برنامه امروز":
-        plan = user_last_plan.get(user_id, "اول هدف رو انتخاب کن 👇")
-        await update.message.reply_text(plan)
+        await update.message.reply_text("اول هدف رو انتخاب کن (نسخه کامل‌تر بعدی)")
         return
 
-    # 📊 آمار
+    # 📊 آمار ساده
     if text == "📊 آمار":
-        total, avg = get_stats()
-
-        await update.message.reply_text(
-            f"📊 آمار مسیرنو:\n\n👥 کاربران: {total}\n🔥 میانگین استریک: {avg}"
-        )
+        await update.message.reply_text("📊 هنوز در نسخه 2.1 ساده هستیم")
         return
 
-    # 👤 پروفایل
-    if text == "👤 پروفایل":
-        user = get_user(user_id)
-
-        if not user:
-            await update.message.reply_text("اول هدف انتخاب کن 👇")
-            return
-
-        await update.message.reply_text(
-            f"""
-👤 پروفایل:
-
-🎯 هدف: {user[1]}
-🔥 استریک: {user[2]}
-⭐ XP: {user[3]}
-🏆 Level: {user[4]}
-"""
-        )
-        return
-
-    await update.message.reply_text("از دکمه‌ها استفاده کن 👇", reply_markup=goals_keyboard)
+    await update.message.reply_text("از دکمه‌ها استفاده کن 👇")
 
 
 def main():
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
 
-    print("MasirNo Bot Running...")
+    print("MasirNo Chat AI Running...")
     app.run_polling()
 
 
