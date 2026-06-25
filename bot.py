@@ -1,76 +1,95 @@
+import random
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
 from db import add_user, get_user, update_streak, get_stats
+from plans import PLANS
+import config
 
 TOKEN = "8342491323:AAFgmXGyHjNI086EucC1K5WDCKUHIMiuPG0"
 
-goals = [
-    ["برنامه‌نویسی", "کنکور"],
-    ["زبان انگلیسی", "تناسب اندام"],
-    ["کسب درآمد"]
-]
+user_last_plan = {}
 
-plans = {
-    "برنامه‌نویسی": "۱ ساعت تمرین پایتون + حل 3 تمرین",
-    "کنکور": "۲ ساعت مطالعه + مرور تست",
-    "زبان انگلیسی": "۲۰ لغت + ۱۰ دقیقه listening",
-    "تناسب اندام": "۳۰ دقیقه ورزش",
-    "کسب درآمد": "بررسی یک ایده جدید"
-}
+goals_keyboard = ReplyKeyboardMarkup(
+    [
+        ["برنامه‌نویسی", "کنکور"],
+        ["زبان انگلیسی", "تناسب اندام"],
+        ["کسب درآمد"]
+    ],
+    resize_keyboard=True
+)
 
-user_state = {}
+action_keyboard = ReplyKeyboardMarkup(
+    [
+        ["🔥 انجام شد", "❌ انجام نشد"],
+        ["📅 برنامه امروز", "📊 آمار"]
+    ],
+    resize_keyboard=True
+)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = ReplyKeyboardMarkup(goals, resize_keyboard=True)
-    await update.message.reply_text("👋 هدف خودت رو انتخاب کن:", reply_markup=keyboard)
+    await update.message.reply_text(config.WELCOME_TEXT, reply_markup=goals_keyboard)
+
+
+def get_random_plan(goal):
+    return random.choice(PLANS[goal])
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text
 
-    if text in plans:
+    # انتخاب هدف
+    if text in PLANS:
         add_user(user_id, text)
-        user_state[user_id] = text
 
-        keyboard = ReplyKeyboardMarkup([["امروز انجام شد ✅", "انجام نشد ❌"]], resize_keyboard=True)
+        plan = get_random_plan(text)
+        user_last_plan[user_id] = plan
 
         await update.message.reply_text(
-            f"🎯 هدف: {text}\n\n📌 برنامه امروز:\n{plans[text]}",
-            reply_markup=keyboard
+            f"🎯 هدف: {text}\n\n📌 برنامه امروز:\n{plan}",
+            reply_markup=action_keyboard
         )
         return
 
-    if text == "امروز انجام شد ✅":
+    # انجام شد
+    if text == "🔥 انجام شد":
         update_streak(user_id, True)
         user = get_user(user_id)
-        await update.message.reply_text(f"🔥 آفرین! استریک تو: {user[2]} روز")
+        await update.message.reply_text(f"🔥 عالی! استریک تو: {user[2]} روز")
         return
 
-    if text == "انجام نشد ❌":
+    # انجام نشد
+    if text == "❌ انجام نشد":
         update_streak(user_id, False)
-        await update.message.reply_text("⚠️ استریک ریست شد. فردا دوباره شروع کن!")
+        await update.message.reply_text(config.FAIL_TEXT)
         return
 
-    await update.message.reply_text("لطفاً از دکمه‌ها استفاده کن.")
+    # برنامه امروز
+    if text == "📅 برنامه امروز":
+        plan = user_last_plan.get(user_id, "ابتدا یک هدف انتخاب کن")
+        await update.message.reply_text(f"📌 برنامه امروز:\n{plan}")
+        return
 
+    # آمار
+    if text == "📊 آمار":
+        total, avg = get_stats()
+        await update.message.reply_text(
+            f"📊 آمار مسیرنو:\n\n👥 کاربران: {total}\n🔥 میانگین استریک: {avg}"
+        )
+        return
 
-async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    total, avg = get_stats()
-    await update.message.reply_text(
-        f"📊 آمار مسیرنو:\n\n👥 کاربران: {total}\n🔥 میانگین استریک: {avg}"
-    )
+    await update.message.reply_text("از دکمه‌ها استفاده کن 👇", reply_markup=goals_keyboard)
 
 
 def main():
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("stats", stats))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("Masirno v1.1 is running...")
+    print("MasirNo v1.2 running...")
     app.run_polling()
 
 
