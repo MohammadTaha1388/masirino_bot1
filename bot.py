@@ -5,6 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 
 from db import add_user, get_user, update_streak, add_xp, get_stats
 from plans import PLANS
+from vip import is_vip
 import config
 
 TOKEN = "8342491323:AAFgmXGyHjNI086EucC1K5WDCKUHIMiuPG0"
@@ -30,19 +31,27 @@ action_keyboard = ReplyKeyboardMarkup(
 )
 
 
-def make_plan(goal):
-    p = PLANS[goal]
-    return f"""📌 برنامه امروز:
+def generate_plan(goal, level, vip=False):
+    base = random.choice(PLANS[goal])
 
-1️⃣ کار اصلی:
-{p['main']}
+    if vip:
+        return f"""⭐ VIP PLAN:
 
-2️⃣ کار مکمل:
-{p['support']}
+{base}
 
-3️⃣ چالش:
-{p['challenge']}
+🔥 تحلیل AI:
+تو در مسیر حرفه‌ای رشد هستی، ادامه بده!
 """
+
+    if level > 3:
+        return f"""🚀 LEVEL UP PLAN:
+
+{base}
+
+💪 تو قوی‌تر شدی، چالش‌ها سخت‌تر شدن!
+"""
+
+    return base
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -57,7 +66,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in PLANS:
         add_user(user_id, text)
 
-        plan = make_plan(text)
+        user = get_user(user_id)
+        vip_status = is_vip(user_id)
+
+        plan = generate_plan(text, user[4] if user else 1, vip_status)
+
         user_last_plan[user_id] = plan
 
         await update.message.reply_text(plan, reply_markup=action_keyboard)
@@ -65,13 +78,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # انجام شد
     if text == "🔥 انجام شد":
+        vip_status = is_vip(user_id)
+
         update_streak(user_id, True)
-        add_xp(user_id, 20)
+
+        xp_gain = 40 if vip_status else 20
+        add_xp(user_id, xp_gain)
 
         user = get_user(user_id)
 
         await update.message.reply_text(
-            f"🔥 آفرین!\n\n🔥 استریک: {user[2]} روز\n⭐ XP: {user[3]}\n🏆 Level: {user[4]}"
+            f"""🔥 عالی!
+
+🔥 استریک: {user[2]}
+⭐ XP: {user[3]}
+🏆 Level: {user[4]}
+💎 VIP: {'فعال' if vip_status else 'غیرفعال'}"""
         )
         return
 
@@ -98,6 +120,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # پروفایل
     if text == "👤 پروفایل":
         user = get_user(user_id)
+        vip_status = is_vip(user_id)
 
         if not user:
             await update.message.reply_text("اول هدف انتخاب کن")
@@ -110,7 +133,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🔥 استریک: {user[2]}
 ⭐ XP: {user[3]}
 🏆 Level: {user[4]}
-"""
+💎 VIP: {'فعال' if vip_status else 'غیرفعال'}"""
         )
         return
 
@@ -123,7 +146,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("MasirNo v1.4 running...")
+    print("MasirNo v1.5 running...")
     app.run_polling()
 
 
