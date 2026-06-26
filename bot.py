@@ -2,9 +2,8 @@ from telegram import ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
 from ai import ask_ai
-import config
 
-TOKEN = config.BOT_TOKEN
+TOKEN = 8342491323:AAFgmXGyHjNI086EucC1K5WDCKUHIMiuPG0
 
 keyboard = ReplyKeyboardMarkup(
     [
