@@ -1,12 +1,11 @@
 from openai import OpenAI
 from groq import Groq
-import config
 
 # OpenAI
-openai_client = OpenAI(api_key=config.OPENAI_API_KEY)
+openai_client = "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"
 
 # Groq
-groq_client = Groq(api_key=config.GROQ_API_KEY)
+groq_client = "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"
 
 
 def build_prompt(goal, level, vip):
