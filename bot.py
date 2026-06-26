@@ -3,7 +3,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 
 from ai import ask_ai
 
-TOKEN = 8342491323:AAFgmXGyHjNI086EucC1K5WDCKUHIMiuPG0
+TOKEN = "8342491323:AAFgmXGyHjNI086EucC1K5WDCKUHIMiuPG0"
 
 keyboard = ReplyKeyboardMarkup(
     [
