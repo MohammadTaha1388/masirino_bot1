@@ -1,5 +1,5 @@
-from openai import OpenAI
-from groq import Groq
+import openai from OpenAI
+import groq from Groq
 import config
 
 # OpenAI
